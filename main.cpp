@@ -103,7 +103,7 @@ public:
 };
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //光线撞击相关函数
-   //是否撞击的判断
+//是否撞击的判断
 static bool if_Hit(Vector3 center, double radius, Ray ray)
 {
     double a = ray.B * ray.B;
@@ -114,11 +114,11 @@ static bool if_Hit(Vector3 center, double radius, Ray ray)
 
     return delta >= 0;
 }
-   //求解撞击法向量，并线性变换得到rgb编码(但是我就不判断撞不撞击了，使用时需要在前面加一个if（bool if_Hit）判断)
+//求解撞击法向量，并线性变换得到rgb编码(但是我就不判断撞不撞击了，使用时需要在前面加一个if（bool if_Hit）判断)
 static Vector3 where_Hit(Vector3 center, double radius, Ray ray)
 {
     float a = ray.B * ray.B;
-    float b = -2.0 * (ray.B * (ray.A-center));
+    float b = 2.0 * (ray.B * (ray.A-center));
     float c = (ray.A-center) *(ray.A- center) - radius * radius;
 
     float delta = b * b - 4 * a * c;
@@ -127,6 +127,11 @@ static Vector3 where_Hit(Vector3 center, double radius, Ray ray)
     float x2=(-b-sqrt(delta))/(2*a);
 
     float t=(x1<x2?x1:x2);
+
+    if(t<=0&&(x1>x2?x1:x2)>0)
+    {
+        t=(x1>x2?x1:x2);
+    }
 
     if(t>=0)
     {
@@ -139,10 +144,24 @@ static Vector3 where_Hit(Vector3 center, double radius, Ray ray)
 
         return Lawline;
     }
+    else
+    {
+        Vector3 black=Vector3(0,0,0);
+        return black;
 
+
+        // Vector3 Lawline=ray.A+ray.B*t-center;
+
+        // Lawline=Vector3::unitization(Lawline);//单位化
+
+        // Vector3 Unit(1,1,1);
+        // Lawline=(Lawline+Unit)/2*255;//向0~255作线性映射(为了颜色好看，改了一下，可能以后变数据会出问题，注意一下)
+
+        // return Lawline;
+    }
 
 }
-   //多重取样 去锯齿
+//多重取样 抗锯齿
 static Vector3 multisample(double x,double y,Sphere R)
 {
     const int sample=2;
@@ -152,11 +171,27 @@ static Vector3 multisample(double x,double y,Sphere R)
     {
         for(int j=0;j<sample;j++)
         {
-            float newx=x+(i+0.5)/sample;
-            float newy=y+(j+0.5)/sample;
+            // float newx=x-0.5+i;
+            // float newy=y-0.5+j;
+            float newx=x-0.5+4/sample/sample*i;
+            float newy=y-0.5+4/sample/sample*j;
             Ray Hit_R(camera, Vector3(newx, newy, z),0);//0是随意赋的值，无实义
-            sample_point[n]=where_Hit(R.center,R.radius,Hit_R);
-            n++;
+
+             bool flag=if_Hit(R.center,R.radius,Hit_R);
+
+            if(flag)
+            {
+                sample_point[n]=where_Hit(R.center,R.radius,Hit_R);
+                n++;
+            }
+            else
+
+            {
+                double px=(x-camera.x+800/2);
+                double py=(y-camera.y+600/2);
+                sample_point[n]=Vector3(135+120*py/601,206+50*py/601,255);
+                n++;
+            }//对2*2个样本点实现了采集
         }
     }//对2*2个样本点实现了采集
     Vector3 average=sample_point[0];
